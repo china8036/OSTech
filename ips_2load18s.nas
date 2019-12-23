@@ -50,7 +50,7 @@ readloop:
 retry:
 		MOV		AH,0x02			; AH=0x02 : 读入磁盘
 		MOV		AL,1			; 1个扇区
-		MOV		BX,0            ; es：bx指向接收从扇区读入数据的内存区
+		MOV		BX,0            ; es：bx es*16+bx指向接收从扇区读入数据的内存区
 		MOV		DL,0x80			; 软驱从0开始，0：软驱A，1：软驱B；硬盘从80h开始，
 		INT		0x13			; 调用磁盘BIOS
 		JNC		next			; 没出错则跳转到fin
@@ -79,7 +79,7 @@ next:
 
 ; 读取完毕，跳转到haribote.sys执行！
 		MOV		[0x0ff0],CH		;
-		JMP		0xc200
+		JMP		main
 
 error:
 		MOV		SI,msg ;msg内存地址赋予SI AH里有错误号
@@ -140,10 +140,29 @@ fin:
 
 msg:
 		DB		0x0a, 0x0a		; 换行两次
-		DB		"load error CODE:8xxxxxxxx" ;xxx预留为AH错误码填充
+		DB		"load error CODE:9xxxxxxxx" ;xxx预留为AH错误码填充
 		DB		0x0a			; 换行
 		DB		0
 
 		RESB	0x7dfe-$		; 填写0x00直到0x001fe
 
 		DB		0x55, 0xaa
+
+;以上512字节占用第一扇区下面为第二扇区 会被上面ips程序加载到0x0820内存地址
+	    ORG		0x8200
+main:
+        MOV SI,hi
+hello:
+		MOV		AL,[SI]
+		ADD		SI,1			; 给SI加1
+		CMP		AL,0
+		JE		fin
+		MOV		AH,0x0e			; 显示一个文字
+		MOV		BX,15			; 指定字符颜色
+		INT		0x10			; 调用显卡BIOS
+		JMP		hello
+hi:
+		DB		0x0a, 0x0a		; 换行两次
+		DB		"hi bootstrap end system begin 1";
+		DB		0x0a			; 换行
+		DB		0
