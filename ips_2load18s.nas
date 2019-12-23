@@ -3,12 +3,11 @@
 
 CYLS	EQU		10				; 声明CYLS=10
 
-		ORG		0x7c00			; 指明程序装载地址
+		ORG		0x7c00			; 指明程序被装载地址bios会自动装载启动盘第一扇区512字节到0x7c00并跳到此处执行 此处告诉汇编器内存地址自动加0x7c00
 
-; 标准FAT12格式软盘专用的代码 Stand FAT12 format floppy code
-
-		JMP		entry
-		DB		0x90
+; 标准FAT12格式软盘专用的代码 Stand FAT12 format floppy code 第一扇区一般用来描述磁盘的文件系统格式 如fat32 ntfs此处格式化成fat12系统样式
+		JMP		entry           ; 因为下面为fat文件系统描述 非操作指令 所以第一条指令跳到指令区
+		DB		0x90 			; 开始格式化成fat12文件系统结构
 		DB		"HARIBOTE"		; 启动扇区名称（8字节）
 		DW		512				; 每个扇区（sector）大小（必须512字节）
 		DB		1				; 簇（cluster）大小（必须为1个扇区）
@@ -83,7 +82,7 @@ next:
 
 error:
 		MOV		SI,msg ;msg内存地址赋予SI AH里有错误号
-		MOV     AL,AH
+		MOV     AL,AH  ; error 下面的为自己添加方便输出AH错误码
 		SHR     AL,7
 		ADD 	AL,48
 		MOV     [SI+20],AL  ;ascii 48为0
@@ -140,7 +139,7 @@ fin:
 
 msg:
 		DB		0x0a, 0x0a		; 换行两次
-		DB		"load error CODE:8xxxxxxxx"
+		DB		"load error CODE:8xxxxxxxx" ;xxx预留为AH错误码填充
 		DB		0x0a			; 换行
 		DB		0
 
