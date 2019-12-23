@@ -39,7 +39,7 @@ entry:
 ; 读取磁盘
 
 		MOV		AX,0x0820
-		MOV		ES,AX
+		MOV		ES,AX           ;es：bx指向接收从扇区读入数据的内存区
 		MOV		CH,0			; 柱面0
 		MOV		DH,0			; 磁头0
 		MOV		CL,2			; 扇区2
@@ -50,15 +50,15 @@ readloop:
 retry:
 		MOV		AH,0x02			; AH=0x02 : 读入磁盘
 		MOV		AL,1			; 1个扇区
-		MOV		BX,0
+		MOV		BX,0            ; es：bx指向接收从扇区读入数据的内存区
 		MOV		DL,0x80			; 软驱从0开始，0：软驱A，1：软驱B；硬盘从80h开始，
 		INT		0x13			; 调用磁盘BIOS
 		JNC		next			; 没出错则跳转到fin
 		ADD		SI,1			; 往SI加1
-		CMP		SI,5			; 比较SI与5
-		JAE		error			; SI >= 5 跳转到error
-		MOV		AX,0x0000
-		MOV		DX,0x0000		; 
+		CMP		SI,5			; 比较SI与5 
+		JAE		error			; SI >= 5 跳转到error 重试五次仍然失败后报错 AH里有错误号
+		MOV		AX,0x0000       ; 每次出错都重置驱动器
+		MOV		DX,0x0080		; 
 		INT		0x13			; 重置驱动器
 		JMP		retry
 next:
@@ -68,13 +68,13 @@ next:
 		ADD		CL,1			; 往CL里面加1
 		CMP		CL,18			; 比较CL与18
 		JBE		readloop		; CL <= 18 跳转到readloop
-		MOV		CL,1
-		ADD		DH,1
-		CMP		DH,2
+		MOV		CL,1                  
+		ADD		DH,1            ; 下一个磁头
+		CMP		DH,2            ; 磁头2结束
 		JB		readloop		; DH < 2 跳转到readloop
 		MOV		DH,0
-		ADD		CH,1
-		CMP		CH,CYLS
+		ADD		CH,1            ; 下一个柱面
+		CMP		CH,CYLS         ; 到CYLS柱面结束
 		JB		readloop		; CH < CYLS 跳转到readloop
 
 ; 读取完毕，跳转到haribote.sys执行！
@@ -82,7 +82,7 @@ next:
 		JMP		0xc200
 
 error:
-		MOV		SI,msg ;msg内存地址赋予SI
+		MOV		SI,msg ;msg内存地址赋予SI AH里有错误号
 		MOV     AL,AH
 		SHR     AL,7
 		ADD 	AL,48
