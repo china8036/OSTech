@@ -1,7 +1,7 @@
 ; haribote-ipl
 ; TAB=4
 ;使用nask编译器编译操作系统无关二进制文件 然后使用dd写入磁盘
-
+[INSTRSET "i486p"]				; 使用到486为止的指令 32位 EAX 等寄存器
 CYLS	EQU		10				; 声明CYLS=10
 
 ; 指明程序被装载地址bios会自动装载启动盘第一扇区512字节到0x7c00并跳到此处执行 此处告诉汇编器内存地址自动加0x7c00
@@ -140,10 +140,9 @@ fin:
 
 msg:
 		DB		0x0a, 0x0a		; 换行两次
-		DB		"load error CODE:9xxxxxxxx" ;xxx预留为AH错误码填充
+		DB		"load error CODE:bxxxxxxxx" ;xxx预留为AH错误码填充
 		DB		0x0a			; 换行
 		DB		0
-
 		RESB	0x7dfe-$		; 填写0x00直到0x001fe
 
 		DB		0x55, 0xaa
@@ -151,18 +150,17 @@ msg:
 ;以上512字节占用第一扇区下面为第二扇区 会被上面ipl程序加载到0x820内存地址
 	    ORG		0x8200
 main:
-        MOV SI,hi
-hello:
-		MOV		AL,[SI]
-		ADD		SI,1			; 给SI加1
-		CMP		AL,0
-		JE		fin
-		MOV		AH,0x0e			; 显示一个文字
-		MOV		BX,15			; 指定字符颜色
-		INT		0x10			; 调用显卡BIOS
-		JMP		hello
-hi:
-		DB		0x0a, 0x0a		; 换行两次
-		DB		"hi bootstrap end system begin 1";
-		DB		0x0a			; 换行
-		DB		0
+		MOV		AL,0x13			;   ;VGA显卡，320x200x8bit 0x0a0000 - 0x0affff 的64kb区域为显存
+		MOV		AH,0x00
+		INT		0x10				; 调用显卡BIOS
+
+		MOV ECX,0x0a0000
+		MOV AL,0
+vgaloop:
+		MOV BYTE[ECX], AL ;因为AL为8位寄存器所以一直加1会自动循环
+		CMP ECX,0x0affff
+		JE fin
+		ADD ECX,1
+		ADD AL,1  ;因为AL为8位寄存器所以一直加1会自动循环
+		JMP vgaloop
+
